@@ -61,22 +61,32 @@ type Options struct {
 	Flags []string
 }
 
+func spreadPointer[Type any](values ...Type) *Type {
+	if len(values) == 0 {
+		return nil
+	}
+
+	return &values[0]
+}
+
 // Returns a Javascript Virtual Machine running an isolated process of
 // Node.js.
-func NewNodeJS(opts *Options) (VM, error) {
+func NewNodeJS(options ...Options) (VM, error) {
+	option := spreadPointer(options...)
+
 	emit := func(thing string) {}
 	var onError func(msg string)
 	var onLog func(msg string)
 	flags := []string{"--experimental-detect-module", "--title", "go-node.mjs", "-e", jsRuntime}
-	if opts != nil {
-		emit = opts.OnEmit
-		flags = append(flags, opts.Flags...)
-		onError = opts.OnError
-		onLog = opts.OnLog
+	if option != nil {
+		emit = option.OnEmit
+		flags = append(flags, option.Flags...)
+		onError = option.OnError
+		onLog = option.OnLog
 	}
 	cmd := exec.Command("node", flags...)
-	if opts != nil && opts.Dir != "" {
-		cmd.Dir = opts.Dir
+	if option != nil && option.Dir != "" {
+		cmd.Dir = option.Dir
 	}
 	stderr, _ := cmd.StderrPipe()
 	stdout, _ := cmd.StdoutPipe()
