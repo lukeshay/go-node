@@ -307,9 +307,9 @@ func (v *jsValue) String() string {
 }
 
 const jsRuntime = `
-import { Socket } from "net";
-import { createInterface } from "readline";
-import { createRequire } from "module";
+import { Socket } from "node:net";
+import { createInterface } from "node:readline";
+import { createRequire } from "node:module";
 
 var require = createRequire(import.meta.url);
 
@@ -334,7 +334,7 @@ global.require = require;
       let input = Buffer.alloc(0);
       let output = Buffer.alloc(0);
 
-      socket.on("data", function (data) {
+      socket.on("data", async (data) => {
         input = Buffer.concat([input, data]);
         while (input.length > 0) {
           let idx = input.indexOf(10);
@@ -351,7 +351,7 @@ global.require = require;
 
           let ret;
           try {
-            ret = "v" + eval.call(global, js);
+            ret = "v" + (await import('data:text/javascript;charset=utf-8,' + encodeURIComponent(js))).default;
           } catch (e) {
             ret = "e" + e;
           }
