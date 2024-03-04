@@ -1,13 +1,15 @@
 # go-node
 
-[![GoDoc](https://godoc.org/github.com/tidwall/go-node?status.svg)](https://godoc.org/github.com/tidwall/go-node)
+This is a fork of [tidwall/go-node](https://github.com/tidwall/go-node) with changes to support ESM.
+
+[![GoDoc](https://godoc.org/github.com/lukeshay/go-node?status.svg)](https://godoc.org/github.com/lukeshay/go-node)
 
 Run Javascript in Go using Node.js.
 
 ## Installing
 
 ```
-go get -u github.com/tidwall/go-node
+go get -u github.com/lukeshay/go-node
 ```
 
 ## Examples
@@ -18,9 +20,9 @@ Create a Node.js VM and run some Javascript.
 vm := node.New(nil)
 vm.Run("iLoveTheJS = true");
 youLoveIt := vm.Run("iLoveTheJS")
-println(youLoveIt.String()) 
+println(youLoveIt.String())
 
-// output: 
+// output:
 // true
 ```
 
@@ -32,7 +34,7 @@ method will contain the Javascript return value.
 ```go
 vm := node.New(nil)
 vm.Run(`
-  function greatScott(){ 
+  function greatScott(){
     console.log('1.21 gigawatts?');
     return 'Delorean go vroom';
   }
@@ -63,7 +65,7 @@ if err := v.Error(); err != nil{
     log.Fatal(err)
 }
 
-// output: 
+// output:
 // a thing
 ```
 

@@ -1,3 +1,3 @@
-module github.com/tidwall/go-node
+module github.com/lukeshay/go-node
 
-go 1.15
+go 1.22
