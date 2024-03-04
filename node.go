@@ -79,7 +79,13 @@ func NewNodeJS(options ...Options) (VM, error) {
 	emit := func(thing string) {}
 	var onError func(msg string)
 	var onLog func(msg string)
-	flags := []string{"--experimental-detect-module", "--title", "go-node.mjs", "-e", fmt.Sprintf(jsRuntime, option.Inject)}
+
+	js := fmt.Sprintf(jsRuntime, "")
+	if option != nil {
+		js = fmt.Sprintf(jsRuntime, option.Inject)
+	}
+
+	flags := []string{"--experimental-detect-module", "--title", "go-node.mjs", "-e", js}
 	if option != nil {
 		emit = option.OnEmit
 		flags = append(flags, option.Flags...)
