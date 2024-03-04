@@ -61,9 +61,9 @@ type Options struct {
 	Flags []string
 }
 
-// New returns a Javascript Virtual Machine running an isolated process of
+// Returns a Javascript Virtual Machine running an isolated process of
 // Node.js.
-func New(opts *Options) VM {
+func NewNodeJS(opts *Options) (VM, error) {
 	emit := func(thing string) {}
 	var onError func(msg string)
 	var onLog func(msg string)
@@ -132,7 +132,7 @@ func New(opts *Options) VM {
 	}()
 	// Start the process
 	if err := cmd.Start(); err != nil {
-		return jsErrVM{err}
+		return nil, err
 	}
 	// Connect the Node instance. Perform a handshake.
 	var conn net.Conn
@@ -191,7 +191,7 @@ func New(opts *Options) VM {
 			conn.Close()
 		}
 		stdin.Close()
-		return jsErrVM{err}
+		return nil, err
 	}
 	// Start the runtime loop
 	ch := make(chan *jsValue)
@@ -219,68 +219,55 @@ func New(opts *Options) VM {
 				}
 			}
 			var buf []byte
-			for _, v := range vals {
-				data, _ := json.Marshal(v.js)
+			for _, val := range vals {
+				data, _ := json.Marshal(val.js)
 				buf = append(buf, data...)
 				buf = append(buf, '\n')
-				v.js = "" // release the script
+				val.js = "" // release the script
 			}
 			if _, err := conn.Write(buf); err != nil {
-				for _, v := range vals {
-					v.err = err
-					v.wg.Done()
-					v.vm = nil // release the vm
+				for _, val := range vals {
+					val.err = err
+					val.wg.Done()
+					val.vm = nil // release the vm
 				}
 			} else {
-				for _, v := range vals {
+				for _, val := range vals {
 					var msg string
 					data, err := rd.ReadBytes('\n')
 					if err != nil {
-						v.err = err
+						val.err = err
 					} else if err := json.Unmarshal(data, &msg); err != nil {
-						v.err = err
+						val.err = err
 					} else if msg != "" && msg[0] == 'e' {
-						v.err = ErrThrown{fmt.Errorf("%s", msg[1:])}
+						val.err = ErrThrown{fmt.Errorf("%s", msg[1:])}
 					} else if msg != "" && msg[0] == 'v' {
-						v.ret = string(msg[1:])
+						val.ret = string(msg[1:])
 					} else {
-						v.err = errors.New("invalid response")
+						val.err = errors.New("invalid response")
 					}
-					v.wg.Done()
-					v.vm = nil // release the vm
+					val.wg.Done()
+					val.vm = nil // release the vm
 				}
 			}
 		}
 	}()
-	vm := new(jsVM)
-	vm.ch = ch
-	runtime.SetFinalizer(vm, func(_ *jsVM) { ch <- nil })
-	return vm
+
+	vm := &nodeJsVM{
+		ch: ch,
+	}
+
+	runtime.SetFinalizer(vm, func(_ *nodeJsVM) { ch <- nil })
+
+	return vm, nil
 }
 
-type (
-	jsErrVM    struct{ err error }
-	jsErrValue struct{ err error }
-)
-
-func (vm jsErrVM) Run(js string) Value {
-	return jsErrValue{vm.err}
-}
-
-func (vm jsErrValue) Error() error {
-	return vm.err
-}
-
-func (vm jsErrValue) String() string {
-	return ""
-}
-
-type jsVM struct {
+type nodeJsVM struct {
 	ch chan *jsValue
 }
 
 // Run some Javascript code. Returns the JSON or an error.
-func (vm *jsVM) Run(js string) Value {
+func (vm *nodeJsVM) Run(js string) Value {
 	v := new(jsValue)
 	v.vm = vm
 	v.js = js
@@ -290,7 +277,7 @@ func (vm *jsVM) Run(js string) Value {
 }
 
 type jsValue struct {
-	vm  *jsVM
+	vm  *nodeJsVM
 	js  string
 	wg  sync.WaitGroup
 	ret string

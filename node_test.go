@@ -11,7 +11,7 @@ import (
 
 func TestNode(t *testing.T) {
 	ch := make(chan bool)
-	vm := New(&Options{
+	vm, err := NewNodeJS(&Options{
 		OnEmit: func(arg string) {
 			if arg != "100" {
 				t.Fatalf("expected '%v', got '%v'", "100", arg)
@@ -52,5 +52,4 @@ func TestNode(t *testing.T) {
 	if err.Error() != "Error: hello" {
 		t.Fatalf("expected '%s', got '%s'", "Error: hello", err.Error())
 	}
-
 }
