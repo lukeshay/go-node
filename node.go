@@ -59,6 +59,8 @@ type Options struct {
 	// Flags are the additional startup flags that are provided to the
 	// "node" process.
 	Flags []string
+	// Inject is an optional string to inject Javascript code into the Node.js VM.
+	Inject string
 }
 
 func spreadPointer[Type any](values ...Type) *Type {
@@ -77,7 +79,7 @@ func NewNodeJS(options ...Options) (VM, error) {
 	emit := func(thing string) {}
 	var onError func(msg string)
 	var onLog func(msg string)
-	flags := []string{"--experimental-detect-module", "--title", "go-node.mjs", "-e", jsRuntime}
+	flags := []string{"--experimental-detect-module", "--title", "go-node.mjs", "-e", fmt.Sprintf(jsRuntime, option.Inject)}
 	if option != nil {
 		emit = option.OnEmit
 		flags = append(flags, option.Flags...)
@@ -313,19 +315,25 @@ var require = createRequire(import.meta.url);
 
 global.require = require;
 
+%s
+
 (function () {
   const rl = createInterface({ input: process.stdin });
 
   rl.on("line", function (line) {
-    let socket = new Socket();
-    let token = line.split(":")[0];
+    const socket = new Socket();
+    const token = line.split(":")[0];
+
     socket.connect(line.split(":")[1], function () {
       socket.write(token + " " + process.version + "\n");
+
       global.emit = function (arg) {
         console.log(token + arg);
       };
+
       let input = Buffer.alloc(0);
       let output = Buffer.alloc(0);
+
       socket.on("data", function (data) {
         input = Buffer.concat([input, data]);
         while (input.length > 0) {
@@ -333,11 +341,14 @@ global.require = require;
           if (idx == -1) {
             break;
           }
-          let js = JSON.parse(input.slice(0, idx).toString("utf8"));
+
+          const js = JSON.parse(input.slice(0, idx).toString("utf8"));
           input = input.slice(idx + 1);
+
           if (input.length == 0) {
             input = Buffer.alloc(0);
           }
+
           let ret;
           try {
             ret = "v" + eval.call(global, js);
